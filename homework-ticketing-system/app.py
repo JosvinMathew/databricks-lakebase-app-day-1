@@ -17,21 +17,6 @@ def healthz():
     return {"status": "ok"}
 
 
-@app.route("/debug/dbinfo")
-def debug_dbinfo():
-    # TEMPORARY - diagnosing a "relation does not exist" error. Remove this
-    # route once the connection target is confirmed; it has no password in
-    # it, but there's no reason to leave a DB-introspection endpoint public.
-    import lakebase
-
-    with lakebase.get_connection() as conn:
-        params = conn.get_dsn_parameters()
-        with conn.cursor() as cur:
-            cur.execute("SELECT current_database(), current_schema(), current_user")
-            row = cur.fetchone()
-    return {"dsn_parameters": params, "current_database_schema_user": row}
-
-
 @app.route("/")
 def index():
     status_filter = request.args.get("status", "")
@@ -167,4 +152,4 @@ def delete_ticket(ticket_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
