@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Support Tickets</title>
+  <style>
+    :root {
+      --ink: #1b2430; --ink-soft: #5b6773; --line: #e2e6ea; --bg: #f6f7f9; --surface: #fff;
+      --blue: #2f6fed; --amber: #b3790a; --green: #1e8e5a; --red: #c0392b;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 32px 16px 64px; }
+    .page { max-width: 880px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin: 0 0 4px; }
+    .sub { color: var(--ink-soft); margin: 0 0 24px; font-size: 0.9rem; }
+
+    .flash { padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; font-size: 0.9rem; }
+    .flash.success { background: #e6f4ec; color: var(--green); }
+    .flash.error { background: #fbeae8; color: var(--red); }
+
+    .stats { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; min-width: 100px; }
+    .stat .n { font-size: 1.3rem; font-weight: 700; }
+    .stat .l { font-size: 0.75rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .panel h2 { font-size: 1rem; margin: 0 0 14px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    input, select, textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    input[type=text] { flex: 1; min-width: 160px; }
+    button { font: inherit; padding: 8px 16px; border: none; border-radius: 6px; background: var(--blue); color: #fff; cursor: pointer; }
+    button:hover { opacity: 0.9; }
+    button.secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+
+    .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+    .filters a { text-decoration: none; font-size: 0.85rem; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--line); color: var(--ink-soft); }
+    .filters a.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+    th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); font-weight: 600; }
+    tr:hover { background: #fafbfc; }
+    a.ticket-link { color: var(--ink); text-decoration: none; font-weight: 600; }
+    a.ticket-link:hover { color: var(--blue); }
+
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; text-transform: capitalize; }
+    .badge.status-open { background: #eaf1ff; color: var(--blue); }
+    .badge.status-in_progress { background: #fdf3e0; color: var(--amber); }
+    .badge.status-resolved { background: #e6f4ec; color: var(--green); }
+    .badge.priority-low { background: #eef1f4; color: var(--ink-soft); }
+    .badge.priority-normal { background: #eaf1ff; color: var(--blue); }
+    .badge.priority-high { background: #fdf3e0; color: var(--amber); }
+    .badge.priority-urgent { background: #fbeae8; color: var(--red); }
+    .empty { color: var(--ink-soft); padding: 20px 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>🎫 Support Tickets</h1>
+    <p class="sub">Backed by Lakebase — every ticket, message, and status change below is a real row.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, msg in messages %}
+        <div class="flash {{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="stats">
+      <div class="stat"><div class="n">{{ total }}</div><div class="l">Total</div></div>
+      {% for s in statuses %}
+        <div class="stat"><div class="n">{{ stats.get(s, 0) }}</div><div class="l">{{ s.replace('_', ' ') }}</div></div>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h2>New ticket</h2>
+      <form method="post" action="{{ url_for('create_ticket') }}">
+        <div class="row" style="margin-bottom: 10px;">
+          <input type="text" name="title" placeholder="Title" required>
+          <input type="text" name="created_by" placeholder="Your name" required style="max-width: 160px;">
+        </div>
+        <div class="row">
+          <select name="priority">
+            {% for p in priorities %}
+              <option value="{{ p }}" {% if p == 'normal' %}selected{% endif %}>{{ p|capitalize }} priority</option>
+            {% endfor %}
+          </select>
+          <input type="text" name="category" placeholder="Category (optional)" style="max-width: 180px;">
+          <button type="submit">Create ticket</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="filters">
+      <a href="{{ url_for('index') }}" class="{{ 'active' if not status_filter else '' }}">All</a>
+      {% for s in statuses %}
+        <a href="{{ url_for('index', status=s) }}" class="{{ 'active' if status_filter == s else '' }}">{{ s.replace('_', ' ')|capitalize }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      {% if tickets %}
+      <table>
+        <thead>
+          <tr><th>Title</th><th>Status</th><th>Priority</th><th>Category</th><th>By</th></tr>
+        </thead>
+        <tbody>
+          {% for t in tickets %}
+          <tr>
+            <td><a class="ticket-link" href="{{ url_for('ticket_detail', ticket_id=t.ticket_id) }}">{{ t.title }}</a></td>
+            <td><span class="badge status-{{ t.status }}">{{ t.status.replace('_', ' ') }}</span></td>
+            <td><span class="badge priority-{{ t.priority }}">{{ t.priority }}</span></td>
+            <td>{{ t.category or '—' }}</td>
+            <td>{{ t.created_by }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p class="empty">No tickets{{ ' with status "' + status_filter + '"' if status_filter else '' }}.</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

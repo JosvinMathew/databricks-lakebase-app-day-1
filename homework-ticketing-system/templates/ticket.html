@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ ticket.title }} · Support Tickets</title>
+  <style>
+    :root {
+      --ink: #1b2430; --ink-soft: #5b6773; --line: #e2e6ea; --bg: #f6f7f9; --surface: #fff;
+      --blue: #2f6fed; --amber: #b3790a; --green: #1e8e5a; --red: #c0392b;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 32px 16px 64px; }
+    .page { max-width: 720px; margin: 0 auto; }
+    a.back { color: var(--ink-soft); text-decoration: none; font-size: 0.85rem; }
+    a.back:hover { color: var(--blue); }
+    h1 { font-size: 1.4rem; margin: 12px 0 6px; }
+    .meta { color: var(--ink-soft); font-size: 0.85rem; margin-bottom: 20px; }
+
+    .flash { padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; font-size: 0.9rem; }
+    .flash.success { background: #e6f4ec; color: var(--green); }
+    .flash.error { background: #fbeae8; color: var(--red); }
+
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; text-transform: capitalize; }
+    .badge.status-open { background: #eaf1ff; color: var(--blue); }
+    .badge.status-in_progress { background: #fdf3e0; color: var(--amber); }
+    .badge.status-resolved { background: #e6f4ec; color: var(--green); }
+    .badge.priority-low { background: #eef1f4; color: var(--ink-soft); }
+    .badge.priority-normal { background: #eaf1ff; color: var(--blue); }
+    .badge.priority-high { background: #fdf3e0; color: var(--amber); }
+    .badge.priority-urgent { background: #fbeae8; color: var(--red); }
+
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .panel h2 { font-size: 0.95rem; margin: 0 0 14px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    input, select, textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
+    textarea { width: 100%; resize: vertical; min-height: 60px; }
+    button { font: inherit; padding: 8px 16px; border: none; border-radius: 6px; background: var(--blue); color: #fff; cursor: pointer; }
+    button:hover { opacity: 0.9; }
+    button.danger { background: var(--red); }
+
+    .message { border-bottom: 1px solid var(--line); padding: 12px 0; }
+    .message:last-child { border-bottom: none; }
+    .message .author { font-weight: 600; font-size: 0.85rem; }
+    .message .when { color: var(--ink-soft); font-size: 0.75rem; margin-left: 6px; }
+    .message .text { margin-top: 4px; font-size: 0.92rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back" href="{{ url_for('index') }}">&larr; All tickets</a>
+    <h1>{{ ticket.title }}</h1>
+    <div class="meta">
+      <span class="badge status-{{ ticket.status }}">{{ ticket.status.replace('_', ' ') }}</span>
+      <span class="badge priority-{{ ticket.priority }}">{{ ticket.priority }}</span>
+      · {{ ticket.category or 'uncategorized' }} · opened by {{ ticket.created_by }} on {{ ticket.created_at.strftime('%b %d, %Y') }}
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, msg in messages %}
+        <div class="flash {{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="panel">
+      <h2>Status</h2>
+      <form method="post" action="{{ url_for('update_status', ticket_id=ticket.ticket_id) }}" class="row">
+        <select name="status">
+          {% for s in statuses %}
+            <option value="{{ s }}" {% if s == ticket.status %}selected{% endif %}>{{ s.replace('_', ' ')|capitalize }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Update status</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Messages ({{ messages|length }})</h2>
+      {% for m in messages %}
+        <div class="message">
+          <span class="author">{{ m.author }}</span><span class="when">{{ m.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+          <div class="text">{{ m.message_text }}</div>
+        </div>
+      {% else %}
+        <p style="color: var(--ink-soft);">No messages yet.</p>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h2>Add a message</h2>
+      <form method="post" action="{{ url_for('add_message', ticket_id=ticket.ticket_id) }}">
+        <textarea name="message_text" placeholder="Message" required></textarea>
+        <div class="row" style="margin-top: 10px;">
+          <input type="text" name="author" placeholder="Your name" required>
+          <button type="submit">Add message</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Danger zone</h2>
+      <form method="post" action="{{ url_for('delete_ticket', ticket_id=ticket.ticket_id) }}"
+            onsubmit="return confirm('Delete this ticket and all its messages? This cannot be undone.');">
+        <button type="submit" class="danger">Delete ticket</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
